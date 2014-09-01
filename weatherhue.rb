@@ -3,6 +3,13 @@ require "json"
 require "pp"
 require "color"
 
+# Get an HSL tuple for a temperature.  This tuple should be suited for
+# the Philips Hue API.  It's an array of 3 floats:
+#
+# - hue (0 - 65535)
+# - saturation (0-255)
+# - brightness (0-255)
+#
 def color_for_temp(temp)
   remainder = temp % 5
   if remainder == 0
@@ -20,6 +27,7 @@ def color_for_temp(temp)
   color_to_hsl color
 end
 
+# Convert an HSL tuple to a Color::HSL object.
 def hsl_to_color(hsl)
   Color::HSL.from_fraction(
     hsl[0] / 65535.0,
@@ -27,6 +35,7 @@ def hsl_to_color(hsl)
     hsl[2] / 255.0)
 end
 
+# Convert a Color::HSL object to an HSL tuple.
 def color_to_hsl(color)
   [(color.h * 65535).to_i, (color.s * 255).to_i, (color.l * 255).to_i]
 end
@@ -60,8 +69,15 @@ HSL = {
 }
 
 if temp = ARGV[0]
+  # Get the temperature from the first argument.
+  #
+  #   ruby weatherhue.rb 75
+  #
   temp = temp.to_i
 else
+  # Get the temperature from the weather2 api
+  #
+  # http://www.myweather2.com/developer/
   url = "http://www.myweather2.com/developer/forecast.ashx?uac=#{ENV["WEATHER2_TOKEN"]}&temp_unit=f&output=json&query=#{ENV["WEATHER2_QUERY"]}"
   res = Faraday.get(url)
   if res.status != 200
@@ -74,6 +90,7 @@ else
   temp = data["weather"]["curren_weather"][0]["temp"].to_i
 end
 
+# ensure temp stays above -20 and below 100
 temp = [temp, -20].max
 temp = [temp, 100].min
 
@@ -81,6 +98,7 @@ temp_color = color_for_temp(temp)
 
 hueapi = Faraday.new ENV["HUE_API"]
 
+# the new state of the hue light
 state = {
   :on => true,
   :hue => temp_color[0],
@@ -91,4 +109,6 @@ state = {
 
 puts temp
 puts state.to_json
+
+# change the hue light
 hueapi.put "/api/#{ENV["HUE_USER"]}/lights/#{ENV["HUE_LIGHT"]}/state", state.to_json
