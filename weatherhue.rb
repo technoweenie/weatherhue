@@ -1,6 +1,5 @@
 require "faraday"
 require "json"
-require "pp"
 require "color"
 
 # Get an HSL tuple for a temperature.  This tuple should be suited for
@@ -104,9 +103,6 @@ state = {
   :bri => temp_color[2],
   :transitiontime => 10,
 }
-
-puts temp
-puts state.to_json
 
 # change the hue light
 hueapi = Faraday.new ENV["HUE_API"]
