@@ -11,6 +11,10 @@ require "color"
 # - brightness (0-255)
 #
 def color_for_temp(temp)
+  # ensure temp stays above -20 and below 100
+  temp = [temp, -20].max
+  temp = [temp, 100].min
+
   remainder = temp % 5
   if remainder == 0
     return HSL[temp]
@@ -90,13 +94,7 @@ else
   temp = data["weather"]["curren_weather"][0]["temp"].to_i
 end
 
-# ensure temp stays above -20 and below 100
-temp = [temp, -20].max
-temp = [temp, 100].min
-
 temp_color = color_for_temp(temp)
-
-hueapi = Faraday.new ENV["HUE_API"]
 
 # the new state of the hue light
 state = {
@@ -111,4 +109,5 @@ puts temp
 puts state.to_json
 
 # change the hue light
+hueapi = Faraday.new ENV["HUE_API"]
 hueapi.put "/api/#{ENV["HUE_USER"]}/lights/#{ENV["HUE_LIGHT"]}/state", state.to_json
