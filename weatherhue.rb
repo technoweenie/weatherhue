@@ -2,6 +2,12 @@ require "faraday"
 require "json"
 require "color"
 
+HUE = {
+  -20 => 60_000,
+  50 => 25_500,
+  100 => 0,
+}
+
 # Get an HSL tuple for a temperature.  This tuple should be suited for
 # the Philips Hue API.  It's an array of 3 floats:
 #
@@ -10,24 +16,40 @@ require "color"
 # - brightness (0-255)
 #
 def color_for_temp(temp)
-  # ensure temp stays above -20 and below 100
-  temp = [temp, -20].max
-  temp = [temp, 100].min
+  # array of temperature keys
+  #   example: [-20, 50, 100]
+  temps = HUE.keys.sort
 
-  remainder = temp % 5
-  if remainder == 0
-    return HSL[temp]
+  # ensure temp stays above -20 and below 100
+  temp = [temp, temps.first].max
+  temp = [temp, temps.last].min
+
+  if key = HUE[temp]
+    return [key, 255, 200]
   end
 
-  lower = temp - remainder
-  upper = lower + 5
+  min = max = nil
+  HUE.keys.sort.each do |key|
+    if key < temp
+      min = key
+    end
 
-  lower_color = hsl_to_color(HSL[lower])
-  upper_color = hsl_to_color(HSL[upper])
+    if key > temp && max == nil
+      max = key
+    end
+  end
 
-  color = lower_color.mix_with(upper_color, remainder / 5.0)
+  full_range = max - min
+  temp_range = temp - min
+  temp_perc = temp_range / full_range.to_f
 
-  color_to_hsl color
+  min_hue = HUE[min]
+  max_hue = HUE[max]
+  full_hue_range = min_hue - max_hue
+  hue_range = full_hue_range * temp_perc
+  hue = min_hue - hue_range
+
+  [hue.to_i, 255, 200]
 end
 
 # Convert an HSL tuple to a Color::HSL object.
@@ -42,34 +64,6 @@ end
 def color_to_hsl(color)
   [(color.h * 65535).to_i, (color.s * 255).to_i, (color.l * 255).to_i]
 end
-
-HSL = {
-  -20=>[53884, 255, 200],
-  -15=>[53988, 255, 200],
-  -10=>[53726, 255, 200],
-  -5=>[52902, 255, 200],
-  0=>[50399, 255, 200],
-  5=>[48821, 255, 200],
-  10=>[44592, 255, 200],
-  15=>[39094, 255, 200],
-  20=>[36305, 255, 200],
-  25=>[35041, 255, 200],
-  30=>[31547, 255, 200],
-  35=>[22141, 255, 200],
-  40=>[19216, 255, 200],
-  45=>[16245, 255, 200],
-  50=>[13075, 255, 200],
-  55=>[11802, 255, 200],
-  60=>[10831, 255, 200],
-  65=>[9901, 255, 200],
-  70=>[8470, 255, 200],
-  75=>[5908, 255, 200],
-  80=>[3346, 255, 200],
-  85=>[2983, 255, 200],
-  90=>[2409, 255, 200],
-  95=>[1820, 255, 200],
-  100=>[1492, 255, 200]
-}
 
 if temp = ARGV[0]
   # Get the temperature from the first argument.
