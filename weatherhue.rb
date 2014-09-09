@@ -1,6 +1,5 @@
 require "faraday"
 require "json"
-require "color"
 
 HUE = {
   -20 => 60_000,
@@ -8,14 +7,8 @@ HUE = {
   100 => 0,
 }
 
-# Get an HSL tuple for a temperature.  This tuple should be suited for
-# the Philips Hue API.  It's an array of 3 floats:
-#
-# - hue (0 - 65535)
-# - saturation (0-255)
-# - brightness (0-255)
-#
-def color_for_temp(temp)
+# Get the hue for a temperature.  It should be between 0 and 65535.
+def hue_for_temp(temp)
   # array of temperature keys
   #   example: [-20, 50, 100]
   temps = HUE.keys.sort
@@ -25,7 +18,7 @@ def color_for_temp(temp)
   temp = [temp, temps.last].min
 
   if key = HUE[temp]
-    return [key, 255, 200]
+    return key
   end
 
   min = max = nil
@@ -49,20 +42,7 @@ def color_for_temp(temp)
   hue_range = full_hue_range * temp_perc
   hue = min_hue - hue_range
 
-  [hue.to_i, 255, 200]
-end
-
-# Convert an HSL tuple to a Color::HSL object.
-def hsl_to_color(hsl)
-  Color::HSL.from_fraction(
-    hsl[0] / 65535.0,
-    hsl[1] / 255.0,
-    hsl[2] / 255.0)
-end
-
-# Convert a Color::HSL object to an HSL tuple.
-def color_to_hsl(color)
-  [(color.h * 65535).to_i, (color.s * 255).to_i, (color.l * 255).to_i]
+  hue.to_i
 end
 
 if temp = ARGV[0]
@@ -87,14 +67,12 @@ else
   temp = data["weather"]["curren_weather"][0]["temp"].to_i
 end
 
-temp_color = color_for_temp(temp)
-
 # the new state of the hue light
 state = {
   :on => true,
-  :hue => temp_color[0],
-  :sat => temp_color[1],
-  :bri => temp_color[2],
+  :hue => hue_for_temp(temp),
+  :sat => 255,
+  :bri => 200,
   :transitiontime => 10,
 }
 
