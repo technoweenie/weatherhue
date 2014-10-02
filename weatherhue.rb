@@ -67,14 +67,20 @@ else
   temp = data["weather"]["curren_weather"][0]["temp"].to_i
 end
 
+new_hue = hue_for_temp(temp)
+
 # the new state of the hue light
 state = {
   :on => true,
-  :hue => hue_for_temp(temp),
+  :hue => new_hue,
   :sat => 255,
   :bri => 200,
   :transitiontime => 10,
 }
+
+if ENV["DEBUG"] == "1"
+  puts "#{temp}F => #{new_hue}"
+end
 
 # change the hue light
 hueapi = Faraday.new ENV["HUE_API"]
